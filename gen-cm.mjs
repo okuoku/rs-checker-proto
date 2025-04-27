@@ -1,4 +1,4 @@
-import {readFile, readdir} from "fs/promises";
+import {readFile, readdir, writeFile} from "fs/promises";
 
 const ctxname = "reposoup";
 const dir = "out";
@@ -18,7 +18,7 @@ async function run(){
 
         const indexEnt = files.find(e => e.name.startsWith("index-"));
         const indexfile = indexEnt ? indexEnt.name : false;
-        console.log("dir",dirs[idx],indexfile);
+        //console.log("dir",dirs[idx],indexfile);
 
         const index = JSON.parse(await readFile(replydir + "/" + indexfile, "utf-8"));
         const ctx = "client-" + ctxname;
@@ -62,7 +62,8 @@ async function run(){
         }
     }
 
-    console.log(global_targets);
+
+    await writeFile("cm.json", JSON.stringify(global_targets, null, 2));
 }
 
 run();
