@@ -45,7 +45,27 @@ async function run(){
             if(targetobj.artifacts){
                 let tgt = {};
                 tgt._ref = targetfile;
-                tgt._sourceproj = codemodel.paths.source;
+                // Decode backtrace (select topmost CMakeLists.txt)
+                if(targetobj.backtrace){
+                    let sel = false;
+                    let btidx = targetobj.backtrace;
+                    for(;;){
+                        let node = targetobj.backtraceGraph.nodes[btidx];
+                        let filename = targetobj.backtraceGraph.files[node.file];
+                        if(filename && filename.endsWith("CMakeLists.txt")){
+                            sel = filename;
+                            break;
+                        }
+                        if(node.parent){
+                            btidx = node.parent;
+                        }else{
+                            break;
+                        }
+                    }
+                    if(sel){
+                        tgt._sourceproj = sel;
+                    }
+                }
                 tgt.artifacts = targetobj.artifacts;
                 if(targetobj.nameOnDisk){
                     tgt.nameOnDisk = targetobj.nameOnDisk;
