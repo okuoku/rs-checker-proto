@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(headercheck C CXX)
+project(headercheck NONE)
 
 include(../stds/c17.cmake)
 include(../stds/posix.cmake)
@@ -7,29 +7,9 @@ include(../stds/cxx.cmake)
 
 set(hdrs)
 
-# Checked with `echo | gcc -v -x c++ -E -`
-set(RS_CXX_PATH 
-    /usr/lib/gcc/x86_64-pc-cygwin/11/include/c++
-    /usr/lib/gcc/x86_64-pc-cygwin/11/include/c++/x86_64-pc-cygwin
-    /usr/lib/gcc/x86_64-pc-cygwin/11/include/c++/backward
-    /usr/lib/gcc/x86_64-pc-cygwin/11/include
-    /usr/local/include
-    /usr/include
-    /usr/lib/gcc/x86_64-pc-cygwin/11/../../../../lib/../include/w32api
-)
-
-# Checked with `echo | gcc -v -x c -E -`
-set(RS_C_PATH 
-    /usr/lib/gcc/x86_64-pc-cygwin/11/include
-    /usr/local/include
-    /usr/include
-    /usr/lib/gcc/x86_64-pc-cygwin/11/../../../../lib/../include/w32api
-)
-
-set(RS_C_COMPILER gcc)
-set(RS_CXX_COMPILER g++)
-
-list(REMOVE_DUPLICATES RS_PREFIX_PATH)
+#include(../platforms/cygwin64.cmake)
+#include(../platforms/mingw64-clang.cmake)
+include(../platforms/ndk.cmake)
 
 message(STATUS "Prefix: ${RS_PREFIX_PATH}")
 
@@ -73,16 +53,114 @@ reghdrs(posix_standard_header_names_issue6 POSIX_I6)
 reghdrs(posix_standard_header_names_issue7 POSIX_I7)
 reghdrs(posix_standard_header_names_issue8 POSIX_I8)
 
+# Android libraries
+# https://developer.android.com/ndk/guides/stable_apis
+set(hdr_ANDROID_LOGGING android/log.h)
+set(hdr_ANDROID_TRACE android/trace.h)
+set(hdr_ANDROID_ZLIB zlib.h)
+set(hdr_KHR_GLES
+    GLES/gl.h
+    #GLES/glext.h
+    GLES2/gl2.h
+    #GLES2/gl2ext.h
+    GLES3/gl3.h
+    #GLES3/gl3ext.h
+    GLES3/gl31.h
+    GLES3/gl32.h)
+
+set(hdr_KHR_EGL EGL/egl.h 
+    # EGL/eglext.h
+)
+
+set(hdr_KHR_VULKAN vulkan/vulkan.h)
+
+set(hdr_ANDROID_BITMAPS android/bitmap.h)
+
+set(hdr_ANDROID_SYNC android/sync.h)
+set(hdr_ANDROID_CAMERA 
+    camera/NdkCameraCaptureSession.h
+    camera/NdkCameraDevice.h
+    camera/NdkCameraError.h
+    camera/NdkCameraManager.h
+    camera/NdkCameraMetadata.h
+    camera/NdkCameraMetadataTags.h
+    camera/NdkCameraWindowType.h
+    camera/NdkCaptureRequest.h)
+
+set(hdr_ANDROID_MEDIA
+    media/NdkImage.h
+    media/NdkImageReader.h
+    media/NdkMediaCodec.h
+    media/NdkMediaCodecInfo.h
+    media/NdkMediaCodecStore.h
+    media/NdkMediaCrypto.h
+    media/NdkMediaDataSource.h
+    media/NdkMediaDrm.h
+    media/NdkMediaError.h
+    media/NdkMediaExtractor.h
+    media/NdkMediaFormat.h
+    media/NdkMediaMuxer.h)
+
+
+set(hdr_KHR_OMX_AL
+    OMXAL/OpenMAXAL.h
+    OMXAL/OpenMAXAL_Platform.h
+    OMXAL/OpenMAXAL_Android.h)
+
+# FIXME: More Android APIs
+# https://developer.android.com/ndk/reference
+
+set(hdr_ANDROID_BINDER
+    android/binder_status.h
+    android/binder_ibinder.h
+    android/binder_ibinder_jni.h
+    android/binder_parcel.h
+    android/binder_parcel_jni.h)
+
+set(hdr_ANDROID_HARDWARE_BUFFER
+    android/hardware_buffer.h
+    android/hardware_buffer_jni.h)
+
+set(hdr_ANDROID_AAUDIO
+    aaudio/AAudio.h)
+
+set(hdr_KHR_SLES
+    SLES/OpenSLES.h
+    SLES/OpenSLES_Android.h)
+
+set(hdr_ANDROID_NEURALNETWORKS
+    android/NeuralNetworks.h
+    android/NeuralNetworksTypes.h
+)
+
+foreach(lib ANDROID_LOGGING ANDROID_TRACE ANDROID_ZLIB
+        ANDROID_BITMAPS ANDROID_SYNC ANDROID_CAMERA
+        ANDROID_MEDIA
+        ANDROID_BINDER ANDROID_HARDWARE_BUFFER
+        ANDROID_AAUDIO ANDROID_NEURALNETWORKS
+        KHR_GLES KHR_EGL KHR_VULKAN KHR_OMX_AL)
+    reghdrs(hdr_${lib} ${lib})
+endforeach()
+
+set(probes_total)
 set(probes_c)
 set(probes_cxx)
 set(dir ${CMAKE_CURRENT_BINARY_DIR}/probes)
 foreach(e IN LISTS hdrs)
     set(file ${hdrfile_${e}})
     set(probefile_c ${dir}/cdummy_${e}.c)
-    set(probefile_cxx ${dir}/cxxdummy_${e}.c)
+    set(probefile_cxx ${dir}/cxxdummy_${e}.cxx)
 
     find_header(find_c_${e} ${file} C)
     find_header(find_cxx_${e} ${file} CXX)
+    if(probename_${e})
+        if(NOT "${probename_${e}}" STREQUAL "${file}")
+            message(FATAL_ERROR "${e}: Unmatch [${probename_${e}}] vs. [${file}]")
+        endif()
+    else()
+        set(probename_${e} ${file})
+        list(APPEND probes_total ${e})
+    endif()
     if(find_c_${e} OR find_cxx_${e})
         if(find_c_${e})
             file(WRITE ${probefile_c} "#include<${hdrfile_${e}}>\n\nint dummy_${e}_c = 0;\n")
@@ -102,34 +180,137 @@ endforeach()
 
 set(outdir ${CMAKE_CURRENT_BINARY_DIR}/check)
 file(MAKE_DIRECTORY ${outdir})
-foreach(e IN LISTS probes_c)
-    set(outname ${outdir}/${e}.c.i)
-    set(outmac ${outdir}/${e}.c.m)
-    set(outdef ${outdir}/${e}.c.u)
-    set(outdep ${outdir}/${e}.c.d)
-    add_custom_command(OUTPUT ${outname} ${outdep} ${outmac} ${outdef}
-        COMMAND ${RS_C_COMPILER} -o ${outname} -E ${probe_c_${e}}
-        COMMAND ${RS_C_COMPILER} -o ${outmac} -dD -E ${probe_c_${e}}
-        COMMAND ${RS_C_COMPILER} -o ${outdef} -dU -E ${probe_c_${e}}
-        COMMAND ${RS_C_COMPILER} -M -MF ${outdep} -E ${probe_c_${e}}
-        IMPLICIT_DEPENDS C ${probe_c_${e}}
-        DEPENDS ${probe_c_${e}})
-    add_custom_target(gen_c_${e} ALL DEPENDS ${outname})
+
+foreach(lang c cxx)
+    foreach(e IN LISTS probes_${lang})
+        if("${lang}" STREQUAL c)
+            set(ul C)
+        else()
+            set(ul CXX)
+        endif()
+        set(in ${probe_${lang}_${e}})
+        set(outname ${outdir}/${e}.${lang}.i)
+        set(outmac ${outdir}/${e}.${lang}.m)
+        set(outdef ${outdir}/${e}.${lang}.u)
+        set(outdep_temp ${outdir}/${e}.${lang}.mk)
+        set(outdep ${outdir}/${e}.${lang}.d)
+        set(outast ${outdir}/${e}.${lang}.json)
+        set(script ${CMAKE_CURRENT_LIST_DIR}/captureoutput.cmake)
+        set(filtdepscript ${CMAKE_CURRENT_LIST_DIR}/filtdeps.cmake)
+        set(outputs
+            ${outname}
+            ${outdep_temp}
+            ${outdep}
+            ${outmac}
+            # -dU analysis is only on GCC
+            # ${outdef}
+            ${outast}
+        )
+        add_custom_command(OUTPUT ${outputs}
+            COMMAND ${RS_${ul}_COMPILER} -o ${outname} -E ${in}
+            COMMAND ${RS_${ul}_COMPILER} -o ${outmac} -dD -E ${in}
+            # COMMAND ${RS_C_COMPILER} -o ${outdef} -dU -E ${in}
+            COMMAND ${RS_${ul}_COMPILER} -M -MF ${outdep_temp} -E ${in}
+            COMMAND ${CMAKE_COMMAND} -DSRC=${outdep_temp} -DDST=${outdep}
+            -P ${filtdepscript}
+            COMMAND ${CMAKE_COMMAND} 
+            -DMODE=ast
+            -DSRC=${in}
+            -DDST=${outast}
+            -P ${script}
+            --
+            __CMD__ ${RS_${ul}_COMPILER}
+            IMPLICIT_DEPENDS ${ul} ${probe_${lang}_${e}}
+            DEPENDS ${probe_${lang}_${e}} ${script} ${filtdepscript})
+        add_custom_target(gen_${lang}_${e} ALL DEPENDS ${outputs})
+    endforeach()
 endforeach()
 
-foreach(e IN LISTS probes_cxx)
-    set(outname ${outdir}/${e}.cpp.i)
-    set(outmac ${outdir}/${e}.cpp.m)
-    set(outdef ${outdir}/${e}.cpp.u)
-    set(outdep ${outdir}/${e}.cpp.d)
-    add_custom_command(OUTPUT ${outname} ${outdep} ${outmac} ${outdef}
-        COMMAND ${RS_CXX_COMPILER} -o ${outname} -E ${probe_cxx_${e}}
-        COMMAND ${RS_CXX_COMPILER} -o ${outmac} -dD -E ${probe_cxx_${e}}
-        COMMAND ${RS_CXX_COMPILER} -o ${outdef} -dU -E ${probe_cxx_${e}}
-        COMMAND ${RS_CXX_COMPILER} -M -MF ${outdep} -E ${probe_cxx_${e}}
-        IMPLICIT_DEPENDS CXX ${probe_cxx_${e}}
-        DEPENDS ${probe_cxx_${e}})
-    add_custom_target(gen_cxx_${e} ALL DEPENDS ${outname})
+# Generate dir index
+function(getprefix hdr lang var)
+    csym(sym ${hdr})
+    set(p ${find_${lang}_${sym}})
+    if(p)
+        cmake_path(REMOVE_FILENAME p)
+        set(${var} ${p} PARENT_SCOPE)
+    else()
+        message(FATAL_ERROR "${hdr} was not found in ${lang}")
+    endif()
+endfunction()
+
+set(dirsfile ${CMAKE_CURRENT_BINARY_DIR}/dirs.txt)
+set(acc)
+
+find_program(cygpath cygpath)
+
+if(cygpath)
+    execute_process(COMMAND ${cygpath} -m ${CMAKE_CURRENT_BINARY_DIR}
+        OUTPUT_VARIABLE localbuild
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE rr)
+    if(rr)
+        message(FATAL_ERROR "Failed to convert path")
+    endif()
+else()
+    set(localbuild ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+cmake_path(SET localbuild "${localbuild}")
+cmake_path(NORMAL_PATH localbuild)
+
+file(WRITE ${dirsfile} "_localbuild: ${localbuild}\n")
+foreach(e IN LISTS RS_C_PATH)
+    file(APPEND ${dirsfile} "_CPATH: ${e}\n")
 endforeach()
+foreach(e IN LISTS RS_CXX_PATH)
+    file(APPEND ${dirsfile} "_CXXPATH: ${e}\n")
+endforeach()
+# Freestanding prefix: where we find <limits.h> in C
+getprefix(limits.h c MAP_FREESTAND)
+# C standard prefix: where we find <stdio.h> in C
+getprefix(stdio.h c MAP_CSTD)
+# C++ standard prefix: where we find <new> in CXX
+getprefix(new cxx MAP_CXXSTD)
+file(APPEND ${dirsfile} "MAP_FREESTAND: ${MAP_FREESTAND}\n")
+file(APPEND ${dirsfile} "MAP_CSTD: ${MAP_CSTD}\n")
+file(APPEND ${dirsfile} "MAP_CXXSTD: ${MAP_CXXSTD}\n")
+
+set(mappings FREESTAND CXXSTD CSTD)
+
+function(calcprefix out base path)
+    string(LENGTH ${base} baselen)
+    string(LENGTH ${path} pathlen)
+    if("${baselen}" GREATER "${pathlen}")
+        unset(${out} PARENT_SCOPE)
+        return()
+    endif()
+    string(SUBSTRING "${path}" 0 ${baselen} dir)
+    string(SUBSTRING "${path}" ${baselen} -1 file)
+    if("${dir}" STREQUAL "${base}")
+        set(${out} "${file}" PARENT_SCOPE)
+    else()
+        unset(${out} PARENT_SCOPE)
+    endif()
+endfunction()
+
+# Generate probe index
+set(indexfile ${CMAKE_CURRENT_BINARY_DIR}/index.txt)
+set(acc)
+foreach(e IN LISTS probes_total)
+    foreach(l c cxx)
+        if(find_${l}_${e})
+            foreach(m IN LISTS mappings)
+                calcprefix(mm "${MAP_${m}}" "${find_${l}_${e}}")
+                if(mm)
+                    set(finding_${l} "${m}:${mm}")
+                    break()
+                endif()
+            endforeach()
+        else()
+            set(finding_${l} NOT_FOUND)
+        endif()
+    endforeach()
+    set(acc "${acc}${e}\t${finding_c}\t${finding_cxx}\t${hdrenv_${e}}\n")
+endforeach()
+file(WRITE ${indexfile} "${acc}")
 
 

@@ -7,7 +7,7 @@ set(cxx_standard_header_names
     climits
     compare
     contracts
-    coroutine
+    # coroutine # FIXME: Is not supported by MinGW Clang
     csetjmp
     csignal
     cstdarg

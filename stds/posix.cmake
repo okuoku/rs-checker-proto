@@ -10,7 +10,7 @@ set(posix_standard_header_names_issue5
     sched.h  search.h  semaphore.h  setjmp.h  signal.h  stdarg.h  stddef.h  stdio.h  stdlib.h  string.h  strings.h  stropts.h  syslog.h
     sys/ipc.h  sys/mman.h  sys/msg.h  sys/resource.h  sys/sem.h  sys/shm.h  sys/socket.h  sys/stat.h  sys/statvfs.h  sys/time.h  sys/timeb.h  sys/times.h  sys/types.h  sys/uio.h  sys/un.h  sys/utsname.h  sys/wait.h
     tar.h  term.h  termios.h  time.h  ucontext.h  ulimit.h  unctrl.h  unistd.h  utime.h  utmpx.h
-    varargs.h # LEGACY
+    # varargs.h # LEGACY
     wchar.h  wctype.h  wordexp.h  
     xti.h # ??? (Special)
 )

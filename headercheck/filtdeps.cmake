@@ -1,0 +1,55 @@
+# Filter Gcc/Clang depfile
+
+if(NOT SRC)
+    message(FATAL_ERROR "SRC is required")
+endif()
+if(NOT DST)
+    message(FATAL_ERROR "DST is required")
+endif()
+
+cmake_policy(SET CMP0007 NEW)
+
+function(split_lines in out)
+    string(ASCII 1 one)
+    string(ASCII 2 two)
+    string(ASCII 3 three)
+    string(ASCII 4 four)
+    string(REPLACE ";" "${one}" str "${in}")
+    string(REPLACE "[" "${two}" str "${str}")
+    string(REPLACE "]" "${three}" str "${str}")
+    string(REPLACE "\\" "${four}" str "${str}")
+    string(REPLACE "\n" ";" str "${str}")
+    set(${out} "${str}" PARENT_SCOPE)
+endfunction()
+
+function(decode_line in out)
+    string(ASCII 1 one)
+    string(ASCII 2 two)
+    string(ASCII 3 three)
+    string(ASCII 4 four)
+    string(REPLACE "${one}" ";" str "${in}")
+    string(REPLACE "${two}" "[" str "${str}")
+    string(REPLACE "${three}" "]" str "${str}")
+    string(REPLACE "${four}" "\\" str "${str}")
+    set(${out} "${str}" PARENT_SCOPE)
+endfunction()
+
+file(READ "${SRC}" in)
+split_lines("${in}" lines)
+
+# Drop first line
+list(REMOVE_AT lines 0)
+
+set(queue)
+foreach(l IN LISTS lines)
+    decode_line("${l}" o)
+    string(REGEX REPLACE "\\\\$" "" o "${o}")
+    string(STRIP "${o}" o)
+    if(o)
+        cmake_path(SET p NORMALIZE "${o}")
+        # message(STATUS "L: [${o}]")
+        set(queue "${queue}${p}\n")
+    endif()
+endforeach()
+
+file(WRITE "${DST}" "${queue}")
