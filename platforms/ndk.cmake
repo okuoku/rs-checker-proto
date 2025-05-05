@@ -22,6 +22,12 @@ set(ANDROID_UNKNOWN_LIBS_FIXME
 
 # https://developer.android.com/ndk/guides/stable_apis
 
+# FIMXE: C++ only APIs ??
+set(hdrcxxonly_android/surface_control.h ON)
+set(hdrcxxonly_android/surface_control_jni.h ON) # Implicit (depends surface_control.h)
+set(hdrcxxonly_android/performance_hint.h ON)
+set(hdrcxxonly_android/thermal.h ON)
+
 # Core C/C++
 # FIXME: Android NDK provides C11 + C++17
 setset(lib ANDROID_CORE libc.so libm.so)
