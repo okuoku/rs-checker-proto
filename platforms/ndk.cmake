@@ -219,7 +219,7 @@ setset(hdr ANDROID_HARDWARE_BUFFER_JNI
 # Audio::AAudio
 setset(hdr ANDROID_AAUDIO
     aaudio/AAudio.h)
-setset(hdr ANDROID_AAUDIO libaaudio.so)
+setset(lib ANDROID_AAUDIO libaaudio.so)
 
 # Audio::OpenSL ES
 setset(hdr KHR_SLES
