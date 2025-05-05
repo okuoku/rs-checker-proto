@@ -6,6 +6,12 @@ include(../stds/posix.cmake)
 include(../stds/cxx.cmake)
 
 set(hdrs)
+set(libs)
+
+macro(setset setname nam)
+    set(${setname}_${nam} ${ARGN})
+    list(APPEND set_${setname} ${nam})
+endmacro()
 
 #include(../platforms/cygwin64.cmake)
 #include(../platforms/mingw64-clang.cmake)
@@ -14,9 +20,7 @@ include(../platforms/ndk.cmake)
 message(STATUS "Prefix: ${RS_PREFIX_PATH}")
 
 macro(csym out nam)
-    string(REPLACE . _ _str ${nam})
-    string(REPLACE / _ _str ${_str})
-    set(${out} ${_str})
+    string(MAKE_C_IDENTIFIER "${nam}" ${out})
 endmacro()
 
 macro(reghdrs nam sym)
@@ -46,6 +50,19 @@ function(find_header var nam lang)
     set(${var} ${found} PARENT_SCOPE)
 endfunction()
 
+function(find_linkfile var nam)
+    foreach(e IN LISTS RS_LINK_PATH)
+        if(EXISTS ${e}/${nam})
+            set(found ${e}/${nam})
+        endif()
+        if(found)
+            break()
+        endif()
+    endforeach()
+    set(${var} ${found} PARENT_SCOPE)
+endfunction()
+
+
 reghdrs(c17_standard_header_names C17)
 reghdrs(cxx_standard_header_names CXX)
 reghdrs(posix_standard_header_names_issue5 POSIX_I5)
@@ -53,95 +70,49 @@ reghdrs(posix_standard_header_names_issue6 POSIX_I6)
 reghdrs(posix_standard_header_names_issue7 POSIX_I7)
 reghdrs(posix_standard_header_names_issue8 POSIX_I8)
 
-# Android libraries
-# https://developer.android.com/ndk/guides/stable_apis
-set(hdr_ANDROID_LOGGING android/log.h)
-set(hdr_ANDROID_TRACE android/trace.h)
-set(hdr_ANDROID_ZLIB zlib.h)
-set(hdr_KHR_GLES
-    GLES/gl.h
-    #GLES/glext.h
-    GLES2/gl2.h
-    #GLES2/gl2ext.h
-    GLES3/gl3.h
-    #GLES3/gl3ext.h
-    GLES3/gl31.h
-    GLES3/gl32.h)
-
-set(hdr_KHR_EGL EGL/egl.h 
-    # EGL/eglext.h
-)
-
-set(hdr_KHR_VULKAN vulkan/vulkan.h)
-
-set(hdr_ANDROID_BITMAPS android/bitmap.h)
-
-set(hdr_ANDROID_SYNC android/sync.h)
-set(hdr_ANDROID_CAMERA 
-    camera/NdkCameraCaptureSession.h
-    camera/NdkCameraDevice.h
-    camera/NdkCameraError.h
-    camera/NdkCameraManager.h
-    camera/NdkCameraMetadata.h
-    camera/NdkCameraMetadataTags.h
-    camera/NdkCameraWindowType.h
-    camera/NdkCaptureRequest.h)
-
-set(hdr_ANDROID_MEDIA
-    media/NdkImage.h
-    media/NdkImageReader.h
-    media/NdkMediaCodec.h
-    media/NdkMediaCodecInfo.h
-    media/NdkMediaCodecStore.h
-    media/NdkMediaCrypto.h
-    media/NdkMediaDataSource.h
-    media/NdkMediaDrm.h
-    media/NdkMediaError.h
-    media/NdkMediaExtractor.h
-    media/NdkMediaFormat.h
-    media/NdkMediaMuxer.h)
-
-
-set(hdr_KHR_OMX_AL
-    OMXAL/OpenMAXAL.h
-    OMXAL/OpenMAXAL_Platform.h
-    OMXAL/OpenMAXAL_Android.h)
-
-# FIXME: More Android APIs
-# https://developer.android.com/ndk/reference
-
-set(hdr_ANDROID_BINDER
-    android/binder_status.h
-    android/binder_ibinder.h
-    android/binder_ibinder_jni.h
-    android/binder_parcel.h
-    android/binder_parcel_jni.h)
-
-set(hdr_ANDROID_HARDWARE_BUFFER
-    android/hardware_buffer.h
-    android/hardware_buffer_jni.h)
-
-set(hdr_ANDROID_AAUDIO
-    aaudio/AAudio.h)
-
-set(hdr_KHR_SLES
-    SLES/OpenSLES.h
-    SLES/OpenSLES_Android.h)
-
-set(hdr_ANDROID_NEURALNETWORKS
-    android/NeuralNetworks.h
-    android/NeuralNetworksTypes.h
-)
-
-foreach(lib ANDROID_LOGGING ANDROID_TRACE ANDROID_ZLIB
-        ANDROID_BITMAPS ANDROID_SYNC ANDROID_CAMERA
-        ANDROID_MEDIA
-        ANDROID_BINDER ANDROID_HARDWARE_BUFFER
-        ANDROID_AAUDIO ANDROID_NEURALNETWORKS
-        KHR_GLES KHR_EGL KHR_VULKAN KHR_OMX_AL)
-    reghdrs(hdr_${lib} ${lib})
+foreach(hdr IN LISTS set_hdr)
+    reghdrs(hdr_${hdr} ${hdr})
 endforeach()
 
+function(reglib path)
+    set(p "${path}")
+    cmake_PATH(NORMAL_PATH p)
+    cmake_path(GET p FILENAME fil)
+    cmake_path(GET p EXTENSION LAST_ONLY type)
+    string(MAKE_C_IDENTIFIER "${fil}" sym)
+    set(libs ${libs} ${sym} PARENT_SCOPE)
+    set(libpath_${sym} ${p} PARENT_SCOPE)
+    set(libname_${sym} ${fil} PARENT_SCOPE)
+endfunction()
+
+foreach(sym IN LISTS set_lib)
+    foreach(l IN LISTS lib_${sym})
+        find_linkfile(fil "${l}")
+        if(NOT fil)
+            message(FATAL_ERROR "Cannot find: ${l} (${sym})")
+        endif()
+        message(STATUS "Lib(${sym}): ${fil}")
+        reglib("${fil}")
+    endforeach()
+endforeach()
+
+# Library symbol analysis
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libsym)
+foreach(sym IN LISTS libs)
+    set(script ${CMAKE_CURRENT_LIST_DIR}/gensymtbl.cmake)
+    set(outfile ${CMAKE_CURRENT_BINARY_DIR}/libsym/${sym}.txt)
+    set(elf ${libpath_${sym}})
+    add_custom_command(COMMAND 
+        ${CMAKE_COMMAND} -DELF=${elf}
+        -DNM=${RS_NM}
+        -DDST=${CMAKE_CURRENT_BINARY_DIR}/libsym/${sym}.txt
+        -P ${script}
+        DEPENDS ${elf} ${script} ${RS_NM}
+        OUTPUT ${outfile})
+    add_custom_target(libsym_${sym} ALL DEPENDS ${outfile})
+endforeach()
+
+# Header analysis
 set(probes_total)
 set(probes_c)
 set(probes_cxx)
@@ -161,15 +132,25 @@ foreach(e IN LISTS hdrs)
         set(probename_${e} ${file})
         list(APPEND probes_total ${e})
     endif()
+
+    # Create dep header
+    set(deps "")
+    if(hdrdeps_${file})
+        foreach(f IN LISTS hdrdeps_${file})
+            set(deps "${deps}#include <${f}>\n")
+        endforeach()
+    endif()
+
+    # Generate
     if(find_c_${e} OR find_cxx_${e})
         if(find_c_${e})
-            file(WRITE ${probefile_c} "#include<${hdrfile_${e}}>\n\nint dummy_${e}_c = 0;\n")
+            file(WRITE ${probefile_c} "${deps}\n#include<${file}>\n\nint dummy_${e}_c = 0;\n")
             set(probe_c_${e} ${probefile_c})
             list(APPEND probes_c ${e})
         endif()
 
         if(find_cxx_${e})
-            file(WRITE ${probefile_cxx} "#include<${hdrfile_${e}}>\n\nint dummy_${e}_cxx = 0;\n")
+            file(WRITE ${probefile_cxx} "${deps}\n#include<${file}>\n\nint dummy_${e}_cxx = 0;\n")
             set(probe_cxx_${e} ${probefile_cxx})
             list(APPEND probes_cxx ${e})
         endif()
