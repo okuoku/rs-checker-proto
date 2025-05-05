@@ -1,6 +1,7 @@
 include(${CMAKE_CURRENT_LIST_DIR}/detect.cmake)
 
-cmake_path(SET ndkroot f:/android-sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64)
+set(ndkversion 29.0.13113456)
+cmake_path(SET ndkroot f:/android-sdk/ndk/${ndkversion}/toolchains/llvm/prebuilt/windows-x86_64)
 set(ndkbinroot ${ndkroot}/bin)
 
 set(clang ${ndkbinroot}/clang.exe)
@@ -22,11 +23,11 @@ set(ANDROID_UNKNOWN_LIBS_FIXME
 
 # https://developer.android.com/ndk/guides/stable_apis
 
-# FIMXE: C++ only APIs ??
-set(hdrcxxonly_android/surface_control.h ON)
-set(hdrcxxonly_android/surface_control_jni.h ON) # Implicit (depends surface_control.h)
-set(hdrcxxonly_android/performance_hint.h ON)
-set(hdrcxxonly_android/thermal.h ON)
+# FIMXE: C++ only APIs ?? => Fixed in r28 and r29
+#set(hdrcxxonly_android/surface_control.h ON)
+#set(hdrcxxonly_android/surface_control_jni.h ON) # Implicit (depends surface_control.h)
+#set(hdrcxxonly_android/performance_hint.h ON)
+#set(hdrcxxonly_android/thermal.h ON)
 
 # Core C/C++
 # FIXME: Android NDK provides C11 + C++17
