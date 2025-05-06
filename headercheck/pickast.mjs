@@ -6,11 +6,41 @@ async function run(infile, outfile){
 
     let funcs = {};
 
-    function pick(node, locstack){
+    function curbox(init){
+        let box = init;
+        return function(x){
+            if(x === true){
+                return box;
+            }else{
+                box = x;
+            }
+        }
+    }
+
+    function pick(node, box){
+        let loc = false;
+        let line = false;
+        let curfile = box(true);
+        /* Pickup location */
+        if(node.loc){
+            if(node.loc.presumedFile){
+                curfile = node.loc.presumedFile;
+                box(curfile);
+                //console.log("P curfile", curfile);
+            }else if(node.loc.file){
+                curfile = node.loc.file;
+                box(curfile);
+                //console.log("R curfile", curfile);
+            }
+            if(node.loc.presumedLine){
+                line = node.loc.presumedLine;
+            }else if(node.loc.line){
+                line = node.loc.line;
+            }
+        }
+
         if(node.kind === "FunctionDecl"){
             const name = node.mangledName;
-            let loc = false;
-            let line = false;
             /* Exclude static / inline */
             if(! name){
                 //console.log("Node without mangled name", node.name);
@@ -27,55 +57,22 @@ async function run(infile, outfile){
                 return;
             }
 
-            /* Pickup location */
-            if(node.range){
-                if(node.range.end){
-                    if(node.range.end.expansionLoc){
-                        loc = node.range.end.expansionLoc.file;
-                        line = node.range.end.expansionLoc.line;
-                    }
-                }
-
-                if(node.range.begin){
-                    if(node.range.begin.expansionLoc){
-                        loc = node.range.begin.expansionLoc.file;
-                        line = node.range.begin.expansionLoc.line;
-                    }
-                }
-
-                if(! loc){
-                    const v = locstack.find(e => e.file);
-                    if(v && v.file){
-                        loc = v.file;
-                        if(node.loc){
-                            line = node.loc.presumedLine ? node.loc.presumedLine : node.loc.line;
-                        }else{
-                            line = v.line;
-                        }
-                    }else{
-                        console.log("MISSING", name);
-                    }
-                }
+            loc = curfile;
+            line = node.line;
+            if(! loc){
+                console.log("MISSING", name);
             }
+
             funcs[name] = loc + (line ? "\t" + line.toString() : "");
         }
+
         if(node.inner){
-            let newloc = locstack;
-            if(node.loc){
-                let myloc = node.loc.expansionLoc ? node.loc.expansionLoc : node.loc;
-                if(myloc.presumedFile){
-                    myloc.file = myloc.presumedFile;
-                }
-                if(myloc.presumedLine){
-                    myloc.line = myloc.presumedLine;
-                }
-                newloc = [myloc].concat(locstack);
-            }
-            node.inner.forEach(e => pick(e, newloc));
+            const nbox = curbox(curfile);
+            node.inner.forEach(e => pick(e, nbox));
         }
     }
 
-    pick(ast, []);
+    pick(ast, curbox("UNKNOWN"));
 
     let out = "";
     for(const name in funcs){
