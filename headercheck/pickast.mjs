@@ -48,7 +48,7 @@ async function run(infile, outfile){
                     if(v && v.file){
                         loc = v.file;
                         if(node.loc){
-                            line = node.loc.line;
+                            line = node.loc.presumedLine ? node.loc.presumedLine : node.loc.line;
                         }else{
                             line = v.line;
                         }
@@ -60,11 +60,17 @@ async function run(infile, outfile){
             funcs[name] = loc + (line ? "\t" + line.toString() : "");
         }
         if(node.inner){
-            let myloc = locstack;
+            let newloc = locstack;
             if(node.loc){
-                myloc = node.loc.expansionLoc ? node.loc.expansionLoc : node.loc;
+                let myloc = node.loc.expansionLoc ? node.loc.expansionLoc : node.loc;
+                if(myloc.presumedFile){
+                    myloc.file = myloc.presumedFile;
+                }
+                if(myloc.presumedLine){
+                    myloc.line = myloc.presumedLine;
+                }
+                newloc = [myloc].concat(locstack);
             }
-            const newloc = [myloc].concat(locstack);
             node.inner.forEach(e => pick(e, newloc));
         }
     }

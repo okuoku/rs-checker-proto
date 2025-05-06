@@ -19,6 +19,29 @@ include(../platforms/ndk.cmake)
 
 message(STATUS "Prefix: ${RS_PREFIX_PATH}")
 
+find_program(node node)
+if(NOT node)
+    message(FATAL_ERROR "Node js required.")
+endif()
+
+find_program(cygpath cygpath)
+
+macro(convpath in var)
+    if(cygpath)
+        execute_process(COMMAND ${cygpath} -m ${${in}}
+            OUTPUT_VARIABLE ${var}
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE rr)
+        if(rr)
+            message(FATAL_ERROR "Failed to convert path")
+        endif()
+    else()
+        set(${var} "${${in}}")
+    endif()
+    cmake_path(SET ${var} "${${var}}")
+    cmake_path(NORMAL_PATH ${var})
+endmacro()
+
 macro(csym out nam)
     string(MAKE_C_IDENTIFIER "${nam}" ${out})
 endmacro()
@@ -175,6 +198,8 @@ endforeach()
 set(outdir ${CMAKE_CURRENT_BINARY_DIR}/check)
 file(MAKE_DIRECTORY ${outdir})
 
+convpath(CMAKE_CURRENT_LIST_DIR headercheck)
+
 foreach(lang c cxx)
     foreach(e IN LISTS probes_${lang})
         if("${lang}" STREQUAL c)
@@ -188,17 +213,21 @@ foreach(lang c cxx)
         set(outdef ${outdir}/${e}.${lang}.u)
         set(outdep_temp ${outdir}/${e}.${lang}.mk)
         set(outdep ${outdir}/${e}.${lang}.d)
-        set(outast ${outdir}/${e}.${lang}.json)
+        set(outast1 ${outdir}/${e}.${lang}.json)
+        set(outpick1 ${outdir}/${e}.${lang}.isym)
+        set(outast2 ${outdir}/${e}.p${lang}.json)
+        set(outpick2 ${outdir}/${e}.${lang}.psym)
         set(script ${CMAKE_CURRENT_LIST_DIR}/captureoutput.cmake)
         set(filtdepscript ${CMAKE_CURRENT_LIST_DIR}/filtdeps.cmake)
+        set(astscript ${headercheck}/pickast.mjs)
         set(outputs
             ${outname}
-            ${outdep_temp}
-            ${outdep}
+            ${outdep_temp} ${outdep}
             ${outmac}
             # -dU analysis is only on GCC
             # ${outdef}
-            ${outast}
+            ${outast1} ${outast2}
+            ${outpick1} ${outpick2}
         )
         add_custom_command(OUTPUT ${outputs}
             COMMAND ${RS_${ul}_COMPILER} -o ${outname} -E ${in}
@@ -207,15 +236,16 @@ foreach(lang c cxx)
             COMMAND ${RS_${ul}_COMPILER} -M -MF ${outdep_temp} -E ${in}
             COMMAND ${CMAKE_COMMAND} -DSRC=${outdep_temp} -DDST=${outdep}
             -P ${filtdepscript}
-            COMMAND ${CMAKE_COMMAND} 
-            -DMODE=ast
-            -DSRC=${in}
-            -DDST=${outast}
-            -P ${script}
-            --
+            COMMAND ${CMAKE_COMMAND} -DMODE=ast
+            -DSRC=${in} -DDST=${outast1} -P ${script} --
             __CMD__ ${RS_${ul}_COMPILER}
+            COMMAND ${CMAKE_COMMAND} -DMODE=ast
+            -DSRC=${outname} -DDST=${outast2} -P ${script} --
+            __CMD__ ${RS_${ul}_COMPILER}
+            COMMAND ${node} ${astscript} ${outast1} ${outpick1}
+            COMMAND ${node} ${astscript} ${outast2} ${outpick2}
             IMPLICIT_DEPENDS ${ul} ${probe_${lang}_${e}}
-            DEPENDS ${probe_${lang}_${e}} ${script} ${filtdepscript})
+            DEPENDS ${probe_${lang}_${e}} ${script} ${filtdepscript} ${astscript})
         add_custom_target(gen_${lang}_${e} ALL DEPENDS ${outputs})
     endforeach()
 endforeach()
@@ -235,21 +265,8 @@ endfunction()
 set(dirsfile ${CMAKE_CURRENT_BINARY_DIR}/dirs.txt)
 set(acc)
 
-find_program(cygpath cygpath)
 
-if(cygpath)
-    execute_process(COMMAND ${cygpath} -m ${CMAKE_CURRENT_BINARY_DIR}
-        OUTPUT_VARIABLE localbuild
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        RESULT_VARIABLE rr)
-    if(rr)
-        message(FATAL_ERROR "Failed to convert path")
-    endif()
-else()
-    set(localbuild ${CMAKE_CURRENT_BINARY_DIR})
-endif()
-cmake_path(SET localbuild "${localbuild}")
-cmake_path(NORMAL_PATH localbuild)
+convpath(CMAKE_CURRENT_BINARY_DIR localbuild)
 
 file(WRITE ${dirsfile} "_localbuild: ${localbuild}\n")
 foreach(e IN LISTS RS_C_PATH)
