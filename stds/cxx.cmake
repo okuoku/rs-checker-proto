@@ -1,4 +1,4 @@
-set(cxx_standard_header_names
+set(cxx_standard_header_names_cxx
     # https://en.cppreference.com/w/cpp/header
     cstdlib
     execution
@@ -147,7 +147,9 @@ set(cxx_standard_header_names
     shared_mutex
     stop_token
     thread
+)
 
+set(cxx_standard_header_names_ccompat
     # C compat
     assert.h
     ctype.h
@@ -190,3 +192,12 @@ set(cxx_standard_header_names
     stdalign.h
     stdbool.h
 )
+
+set(cxx_standard_header_names
+    ${cxx_standard_header_names_cxx}
+    ${cxx_standard_header_names_ccompat})
+
+foreach(e IN LISTS cxx_standard_header_names_cxx)
+    set(hdrcxxonly_${e} ON)
+endforeach()
+
