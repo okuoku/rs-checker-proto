@@ -17,8 +17,6 @@ endmacro()
 #include(../platforms/mingw64-clang.cmake)
 include(../platforms/ndk.cmake)
 
-message(STATUS "Prefix: ${RS_PREFIX_PATH}")
-
 find_program(node node)
 if(NOT node)
     message(FATAL_ERROR "Node js required.")
