@@ -1,8 +1,46 @@
 import {readFile, writeFile} from "fs/promises";
 
+/* Encode binary into text and remove whitespaces */
+
+function search_lf(bin, start){
+    const len = bin.length;
+    // FIXME: just use indexOf
+    for(let i = start; i != len; i++){
+        if(bin[i] == 0x0a){
+            return i;
+        }
+    }
+    return -1;
+}
+
+function compress_to_text(bin){
+    const orig_size = bin.length;
+    if(bin.length < 1024*1024*100){
+        /* short circuit */
+        return bin.toString("utf8");
+    }else{
+        let c = 0;
+        let i = 0;
+        let r = "";
+        i = search_lf(bin, c);
+        while(i >= 0){
+            const s = bin.toString("utf8", c, i).trim();
+            r += s;
+            c = i+1;
+            if(c == orig_size){
+                break;
+            }
+            i = search_lf(bin, c);
+        }
+        r += bin.toString("utf8", c);
+        const new_size = r.length;
+        return r;
+    }
+}
+
 async function run(infile, outfile){
     const ast_text = await readFile(infile);
-    const ast = JSON.parse(ast_text);
+    const ast = JSON.parse(compress_to_text(ast_text));
 
     let funcs = {};
 
