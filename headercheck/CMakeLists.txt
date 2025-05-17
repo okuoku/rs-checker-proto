@@ -102,6 +102,9 @@ function(reglib path)
     cmake_path(GET p EXTENSION LAST_ONLY type)
     string(MAKE_C_IDENTIFIER "${fil}" sym)
     set(libs ${libs} ${sym} PARENT_SCOPE)
+    if(libpath_sym)
+        message(FATAL_ERROR "We already have ${sym} as [${libpath_${sym}}]")
+    endif()
     set(libpath_${sym} ${p} PARENT_SCOPE)
     set(libname_${sym} ${fil} PARENT_SCOPE)
 endfunction()
@@ -122,13 +125,20 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libsym)
 foreach(sym IN LISTS libs)
     set(script ${CMAKE_CURRENT_LIST_DIR}/gensymtbl.cmake)
     set(outfile ${CMAKE_CURRENT_BINARY_DIR}/libsym/${sym}.txt)
-    set(elf ${libpath_${sym}})
+    set(file ${libpath_${sym}})
+    cmake_path(GET file EXTENSION LAST_ONLY type)
+    if("${type}" STREQUAL ".a")
+        set(mode STATIC)
+    else()
+        set(mode SHARED)
+    endif()
     add_custom_command(COMMAND 
-        ${CMAKE_COMMAND} -DELF=${elf}
+        ${CMAKE_COMMAND} -DFILE=${file}
+        -DMODE=${mode}
         -DNM=${RS_NM}
         -DDST=${CMAKE_CURRENT_BINARY_DIR}/libsym/${sym}.txt
         -P ${script}
-        DEPENDS ${elf} ${script} ${RS_NM}
+        DEPENDS ${file} ${script} ${RS_NM}
         OUTPUT ${outfile})
     add_custom_target(libsym_${sym} ALL DEPENDS ${outfile})
 endforeach()
