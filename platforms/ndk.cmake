@@ -19,21 +19,25 @@ set(ANDROID_UNKNOWN_LIBS_FIXME
     # FIXME: Find documentation for these
     libnativehelper.so
     libstdc++.so
+
+    # and their static versions
+    libstdc++.a
+
+    # and compiler_rt
+    libcompiler_rt-extras.a
+
+    # unknown
+    libc++experimental.a
+    libc++abi.a
 )
 
 # https://developer.android.com/ndk/guides/stable_apis
 
-# FIMXE: C++ only APIs ?? => Fixed in r28 and r29
-#set(hdrcxxonly_android/surface_control.h ON)
-#set(hdrcxxonly_android/surface_control_jni.h ON) # Implicit (depends surface_control.h)
-#set(hdrcxxonly_android/performance_hint.h ON)
-#set(hdrcxxonly_android/thermal.h ON)
-
 # Core C/C++
 # FIXME: Android NDK provides C11 + C++17
-setset(lib ANDROID_CORE libc.so libm.so)
-setset(lib ANDROID_CORE_CXX libc++_shared.so)
-setset(lib ANDROID_CORE_DLFCN libdl.so)
+setset(lib ANDROID_CORE libc.so libm.so libc.a libm.a)
+setset(lib ANDROID_CORE_CXX libc++_shared.so libc++_static.a)
+setset(lib ANDROID_CORE_DLFCN libdl.so libdl.a)
 
 # Logging
 setset(hdr ANDROID_LOGGING android/log.h)
@@ -45,7 +49,7 @@ setset(hdr ANDROID_TRACE android/trace.h)
 
 # zlib compression
 setset(hdr ANDROID_ZLIB zlib.h)
-setset(lib ANDROID_ZLIB libz.so)
+setset(lib ANDROID_ZLIB libz.so libz.a)
 
 
 # Graphics::OpenGL ES 1.0 - 3.2
