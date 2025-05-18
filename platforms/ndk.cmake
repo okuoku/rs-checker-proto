@@ -179,7 +179,7 @@ setset(hdr ANDROID_NATIVE_ACTIVITY
     android/input_transfer_token_jni.h
     android/native_activity.h
     android/native_window_jni.h
-    android/rect.h
+    android/rect.h # It seems shared with others
     android/surface_control.h
     android/surface_control_input_receiver.h
     android/surface_control_jni.h
@@ -219,6 +219,7 @@ setset(hdr ANDROID_HARDWARE_BUFFER
 )
 setset(hdr ANDROID_HARDWARE_BUFFER_JNI
     android/hardware_buffer.h)
+set(hdrhighprio_ANDROID_HARDWARE_BUFFER_JNI ON)
 
 # Audio::AAudio
 setset(hdr ANDROID_AAUDIO
@@ -238,3 +239,13 @@ setset(hdr ANDROID_NEURALNETWORKS
 )
 setset(lib ANDROID_NEURALNETWORKS libneuralnetworks.so)
 
+
+# Virtual libraries (Implies high priority)
+setset(hdr JAVA_JNI__VIR jni.h)
+set(hdrvirtual_JAVA_JNI__VIR ON)
+setset(hdr ANDROID_RECT__VIR android/rect.h)
+set(hdrvirtual_ANDROID_RECT__VIR ON)
+setset(hdr KHR_PLATFORM__VIR KHR/khrplatform.h)
+set(hdrvirtual_KHR_PLATFORM__VIR ON)
+setset(hdr KHR_GL3PLATFORM__VIR GLES3/gl3platform.h)
+set(hdrvirtual_KHR_GL3PLATFORM__VIR ON)
