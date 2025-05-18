@@ -234,8 +234,8 @@ foreach(g IN LISTS grps)
 endforeach()
 
 # Pass2: Priority assignment
-foreach(g IN LISTS hdr_prio) # Pass2.1: Assign
-    foreach(i IN LISTS direct_${g} indirect_${g})
+foreach(g IN LISTS hdr_prio) # Pass2.1: Assign explicits
+    foreach(i IN LISTS direct_${g})
         if(NOT prio_${i})
             set(prio_${i} ${g})
         else()
@@ -243,8 +243,15 @@ foreach(g IN LISTS hdr_prio) # Pass2.1: Assign
         endif()
     endforeach()
 endforeach()
+foreach(g IN LISTS hdr_prio) # Pass2.2: Assign implicits
+    foreach(i IN LISTS indirect_${g})
+        if(NOT prio_${i})
+            set(prio_${i} ${g})
+        endif()
+    endforeach()
+endforeach()
 
-foreach(g IN LISTS grps) # Pass2.2: Filter
+foreach(g IN LISTS grps) # Pass2.3: Filter
     set(real_direct_${g})
     set(removed_direct_${g})
     set(real_indirect_${g})
