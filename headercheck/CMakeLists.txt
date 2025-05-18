@@ -331,5 +331,3 @@ foreach(e IN LISTS probes_total)
     set(acc "${acc}${e}\t${finding_c}\t${finding_cxx}\t${hdrenv_${e}}\n")
 endforeach()
 file(WRITE ${indexfile} "${acc}")
-
-
